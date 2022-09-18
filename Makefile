@@ -3,7 +3,7 @@
 # Call 'make clean' to clean up and remove old binaries
 # Call 'make run' to recompile and run
 CC = gcc
-CFLAGS = -fopenmp -lstdc++
+CFLAGS = -fopenmp -lstdc++ -lm
 SRC = spmv.cpp
 TARGET = spmv
 
