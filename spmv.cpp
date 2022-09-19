@@ -14,6 +14,10 @@
 #include <boost/numeric/ublas/vector.hpp>
 #include <boost/numeric/ublas/io.hpp>
 
+#include <omp.h>
+
+#include <chrono>
+
 using namespace boost::numeric::ublas;
 
 bool DEBUG = false;
@@ -24,9 +28,10 @@ typedef Eigen::Triplet<double> T;
 std::vector<Eigen::Triplet<double>> tripletList;
 
 
+
 // arr_insert()
 // split up a coordinate line and insert into an matrix hashmap
-void arr_insert(std::string coord_str, std::unordered_map<int, std::unordered_map<int,double>>& arr, Eigen::SparseMatrix<double>& arr_e, int& nrows, int& ncols, int& nonzeros)
+void arr_insert(std::string coord_str, std::unordered_map<int, std::unordered_map<int,double>>& arr, int& nrows, int& ncols, int& nonzeros)
 {
     if (DEBUG) std::cout << "INSERTING: " << coord_str << std::endl;
     // first split the string by space
@@ -109,21 +114,26 @@ void multiply(std::unordered_map<int, std::unordered_map<int,double>>& arr, std:
 
     int debug_interval = 1000000;
     // for each row in the matrix, multiply each column i with the ith entry in vec, place into the ith entry of result
-    for (auto i = arr.begin(); i != arr.end(); i++) {
-        if (i->first % debug_interval == 0) std::cout << i->first << ": " << std::endl;
-        for (auto j = arr[i->first].begin(); j != arr[i->first].end(); j++) {
-            int row = i->first;
-            int col = j->first;
-            double val = arr[row][col];
-            double vprod = val*vec[col];
-            result[row] = result[row] + vprod;
-            if (row % debug_interval == 0) {
-                //std::cout << val << "xVec[" << col << "]=" << vprod <<std::endl;
+    
+
+    
+        #pragma omp parallel
+        {
+        for (auto i = arr.begin(); i != arr.end(); i++) {
+           #pragma omp single nowait
+            {
+                    int row = i->first;
+                    for (auto j = arr[i->first].begin(); j != arr[i->first].end(); j++) {
+                            int col = j->first;
+                            double val = arr[row][col];
+                            double vprod = val*vec[col];
+                            result[row] = result[row] + vprod;
+                    }
             }
-       }
-        //std::cout << '\n';
-    }
-        //std::cout << rownum << " " << i->first<< ": " << i->second << std::endl;
+            }
+        }
+
+
 }
 
 
@@ -136,20 +146,6 @@ int main() {
 // TODO: Take into account 1 offset in coordinates
     int nrows, ncols, nonzeros;
 
-    //2D array of matrix values; access w/ arr[row][col]
-
-    tripletList.reserve(4000000);
-    //compressed_matrix<double> boost_arr(4163763,4163763,12487976);
-    //mapped_vector<double> boost_vec(4163763,4163763);
-    int t = 4163763;
-     //  int t = 6;   
- //compressed_matrix<double> boost_arr(t,t,t*t);
-    //vector<double> boost_vec(t,t);
-    // TODO: WHY WONT SPARSEMATRIX FILL?
-
-
-    Eigen::SparseMatrix<double> arr_e(t,t);
-    Eigen::VectorXd vec_e(t,1);
 
     // TODO: test arr_e.makeCompressed();
     /*
@@ -163,8 +159,9 @@ int main() {
         v(i) = (double) rand() / RAND_MAX;
     }*/
 
-    //std::ifstream mtx("NLR.mtx");
     std::ifstream mtx("NLR.mtx");
+    //std::ifstream mtx("delaunay_n19.mtx");
+    //std::ifstream mtx("delaunay_n19.mtx");
     //std::ifstream mtx("mini.mtx");
 
     if (mtx.is_open()) {
@@ -182,7 +179,7 @@ int main() {
                 break;
             }
 
-            arr_insert(line, arr, arr_e, nrows, ncols, nonzeros);
+            arr_insert(line, arr, nrows, ncols, nonzeros);
             a++;
             if (a % 1000000 == 0 || a < 100) {
 
@@ -192,7 +189,21 @@ int main() {
         mtx.close();
     }
 
+    
+    //tripletList.reserve(12487976); // TODO reserve amount needed
+    //compressed_matrix<double> boost_arr(4163763,4163763,12487976);
+    //mapped_vector<double> boost_vec(4163763,4163763);
+    int t = ncols;
+     //  int t = 6;   
+ //compressed_matrix<double> boost_arr(t,t,t*t);
+    //vector<double> boost_vec(t,t);
+    // TODO: WHY WONT SPARSEMATRIX FILL?
 
+
+    Eigen::SparseMatrix<double> arr_e(t,t);
+    Eigen::VectorXd vec_e(t,1);
+
+    tripletList.reserve(nonzeros);
 
     arr_e.setFromTriplets(tripletList.begin(), tripletList.end());
     std::cout << "S: " << tripletList.size() << std::endl;
@@ -209,13 +220,19 @@ int main() {
     
     //std::cout << arr_e << std::endl;
     std::vector<double> result(ncols, 0.0); //(length, initvalue) constructor
+
+    
+    auto start_time = std::chrono::high_resolution_clock::now();
     multiply(arr, vec, result);
-    std::cout << "VECVEC " << vec_e(1) << std::endl;
- //   std::cout << "ARR " << arr_e.coeff(1,2) << std::endl;
-    std::cout << "New" << std::endl;
+    auto end_time = std::chrono::high_resolution_clock::now();
+    auto ttime = end_time - start_time;
+    std::cout << "Elapsed time (ms): " << ttime/std::chrono::milliseconds(1) << std::endl;
+
+
+
     Eigen::VectorXd boost_product = arr_e*vec_e;//prod(arr_e, vec_e);
     std::cout << "\nMultiplication complete.\n";
-
+    
  //   std::cout << boost_product(5) << " ? " << result[5] << std::endl;
 
   //  if (DEBUG) {
