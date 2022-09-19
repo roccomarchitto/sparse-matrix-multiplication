@@ -16,9 +16,13 @@
 
 using namespace boost::numeric::ublas;
 
-bool DEBUG = true;
+bool DEBUG = false;
 
 int MAX_COLS = 10;
+
+typedef Eigen::Triplet<double> T;
+std::vector<Eigen::Triplet<double>> tripletList;
+
 
 // arr_insert()
 // split up a coordinate line and insert into an matrix hashmap
@@ -52,11 +56,12 @@ void arr_insert(std::string coord_str, std::unordered_map<int, std::unordered_ma
 
     arr[rownum][colnum] = ((double) rand() / RAND_MAX)*4.8 + 0.1;
     //std::cout << rownum << " X " << colnum << std::endl;
-    arr_e.coeffRef(rownum,colnum) = arr[rownum][colnum];
+    //arr_e.coeffRef(rownum,colnum) = arr[rownum][colnum];
     // since symmetric
     arr[colnum][rownum] = ((double) rand() / RAND_MAX)*4.8 + 0.1;
-    arr_e.coeffRef(colnum,rownum) = arr[colnum][rownum];
-
+    //arr_e.coeffRef(colnum,rownum) = arr[colnum][rownum];
+    tripletList.push_back(T(rownum,colnum,arr[rownum][colnum]));
+    if (colnum != rownum) tripletList.push_back(T(colnum,rownum,arr[colnum][rownum]));
     //std::cout << coord_str << ":" << row << "," << col << std::endl;
 }
 
@@ -133,14 +138,18 @@ int main() {
 
     //2D array of matrix values; access w/ arr[row][col]
 
+    tripletList.reserve(4000000);
     //compressed_matrix<double> boost_arr(4163763,4163763,12487976);
     //mapped_vector<double> boost_vec(4163763,4163763);
-    int t = 100000;
-    //compressed_matrix<double> boost_arr(t,t,t*t);
+    int t = 4163763;
+     //  int t = 6;   
+ //compressed_matrix<double> boost_arr(t,t,t*t);
     //vector<double> boost_vec(t,t);
-    
-    Eigen::SparseMatrix<double> arr_e(5,5);
-    Eigen::VectorXd vec_e(5,1);
+    // TODO: WHY WONT SPARSEMATRIX FILL?
+
+
+    Eigen::SparseMatrix<double> arr_e(t,t);
+    Eigen::VectorXd vec_e(t,1);
 
     // TODO: test arr_e.makeCompressed();
     /*
@@ -155,7 +164,8 @@ int main() {
     }*/
 
     //std::ifstream mtx("NLR.mtx");
-    std::ifstream mtx("mini.mtx");
+    std::ifstream mtx("NLR.mtx");
+    //std::ifstream mtx("mini.mtx");
 
     if (mtx.is_open()) {
         int a = 0;
@@ -182,6 +192,11 @@ int main() {
         mtx.close();
     }
 
+
+
+    arr_e.setFromTriplets(tripletList.begin(), tripletList.end());
+    std::cout << "S: " << tripletList.size() << std::endl;
+
     populate_vector(vec, ncols, vec_e);
     if (DEBUG) print_matrix(arr, nrows, ncols);
 
@@ -192,7 +207,7 @@ int main() {
    
     // Multiplication begins here
     
-    std::cout << arr_e << std::endl;
+    //std::cout << arr_e << std::endl;
     std::vector<double> result(ncols, 0.0); //(length, initvalue) constructor
     multiply(arr, vec, result);
     std::cout << "VECVEC " << vec_e(1) << std::endl;
@@ -200,6 +215,8 @@ int main() {
     std::cout << "New" << std::endl;
     Eigen::VectorXd boost_product = arr_e*vec_e;//prod(arr_e, vec_e);
     std::cout << "\nMultiplication complete.\n";
+
+    std::cout << boost_product(5) << " ? " << result[5] << std::endl;
 
     if (DEBUG) {
         for(int i = 0; i < result.size(); i++) {
