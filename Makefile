@@ -3,7 +3,7 @@
 # Call 'make clean' to clean up and remove old binaries
 # Call 'make run' to recompile and run
 CC = gcc
-CFLAGS = -fopenmp -lstdc++ -lm
+CFLAGS = -fopenmp -lstdc++ -lm -I eigen-3.4.0
 SRC = spmv.cpp
 TARGET = spmv
 
