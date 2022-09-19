@@ -216,15 +216,24 @@ int main() {
     Eigen::VectorXd boost_product = arr_e*vec_e;//prod(arr_e, vec_e);
     std::cout << "\nMultiplication complete.\n";
 
-    std::cout << boost_product(5) << " ? " << result[5] << std::endl;
+ //   std::cout << boost_product(5) << " ? " << result[5] << std::endl;
 
-    if (DEBUG) {
+  //  if (DEBUG) {
+  //  TODO Test sizes
+  //  TODO Parallelize
+  // Test for error working: result[1505583] = 15; 
+    std::cout << boost_product.size() << "\n\n" << result.size() << "\n\n";
         for(int i = 0; i < result.size(); i++) {
-            std::cout << result[i] << " " << std::endl;
-            std::cout << boost_product(i) << " " << std::endl;
+            if (abs(result[i]-boost_product[i]) > 0.000001) {
+                std::cout << "ERR" << result[i] << " " << boost_product[i] << std::endl;
+                exit(0);
+            }
+            if (i % 100000 == 0) {
+            std::cout << result[i] << " ? " << boost_product(i) << " " << std::endl;
+            }
         }
-    }
+   // }
 
-
+    std::cout << "Tests passed." << std::endl;
     return 0;
 }
