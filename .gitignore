@@ -1,3 +1,2 @@
 *.mtx
-*eigen*
 test.cpp

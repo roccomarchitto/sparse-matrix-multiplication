@@ -18,7 +18,7 @@
 
 typedef Eigen::Triplet<double> T;
 
-bool DEBUG = false;
+bool DEBUG = false; // turn on for verbose output (only use for small matrices!)
 
 // parse a coordinate line and insert random values into the matrix hashmap
 void arr_insert(std::string coord_str, std::unordered_map<int, std::unordered_map<int,double>>& arr, int& nrows, int& ncols, int& nonzeros, std::vector<Eigen::Triplet<double>>& tripletList);
@@ -47,6 +47,7 @@ void run_once(std::string mtxfile);
 int main() {
 
     // Run SPMV for the three specified files
+    // Assumptions: mtx header is matrix coordinate pattern symmetric
     run_once("delaunay_n19.mtx");
     run_once("NLR.mtx");
     run_once("channel-500x100x100-b050.mtx");
@@ -129,7 +130,6 @@ void populate_vector(std::vector<double>& vec, int& ncols, Eigen::VectorXd& test
          test_vec(i) = vec[i];
          if (DEBUG){
              std::cout << vec[i] << std::endl;
-             std::cout << test_vec(i) << std::endl;
          }
     }
 }
@@ -212,16 +212,23 @@ void run_once(std::string mtxfile) {
 
     std::cout << "Elapsed time w/ custom OpenMP solution (ms): " << ttime/std::chrono::milliseconds(1) << std::endl;
 
-
-    Eigen::VectorXd test_product = arr_e*vec_e;
     
+    // Perform the Eigen3 test multiplication and check each value individually
+    Eigen::VectorXd test_product = arr_e*vec_e;
     for(int i = 0; i < result.size(); i++) {
         if (abs(result[i]-test_product[i]) > 0.000001) {
-            std::cout << "ERROR: Mismatch between Eigen SPMV and OpenMP custom SPMV." << result[i] << " vs. " << test_product[i] << std::endl;
+            std::cout << "ERROR: Mismatch between Eigen SPMV and OpenMP custom SPMV: " << result[i] << " (Eigen) vs. " << test_product[i] << std::endl;
             exit(1);
         }
     }
-    
     std::cout << "Tests passed for file " << mtxfile << std::endl << std::endl;
+
+
+    if (DEBUG) { // print the vector on debug
+        std::cout << "\nResult:\n";
+        for (int i = 0; i < result.size(); i++) {
+            std::cout << result[i] << std::endl;
+        }
+    }
 
 }
