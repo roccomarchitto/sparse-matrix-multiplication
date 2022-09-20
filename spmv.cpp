@@ -40,7 +40,8 @@ void multiply(std::unordered_map<int, std::unordered_map<int,double>>& arr, std:
 
 
 // load, multiply, and test SPMV for a specific file
-void run_once(std::string mtxfile);
+// returns custom speed
+int run_once(std::string mtxfile);
 
 
 
@@ -48,9 +49,15 @@ int main() {
 
     // Run SPMV for the three specified files
     // Assumptions: mtx header is matrix coordinate pattern symmetric
-    run_once("delaunay_n19.mtx");
-    run_once("NLR.mtx");
-    run_once("channel-500x100x100-b050.mtx");
+    std::vector<int> execution_times;
+    execution_times.push_back(run_once("delaunay_n19.mtx"));
+    execution_times.push_back(run_once("NLR.mtx"));
+    execution_times.push_back(run_once("channel-500x100x100-b050.mtx"));
+
+    std::cout << "Elapsed times (ms) for optimized SPMV runs (in the above order...):\n";
+    for (int i = 0; i < execution_times.size(); i++) {
+        std::cout << execution_times.at(i) << std::endl;
+    }
 
     return 0;
 }
@@ -160,7 +167,7 @@ void multiply(std::unordered_map<int, std::unordered_map<int,double>>& arr, std:
 
 
 
-void run_once(std::string mtxfile) {
+int run_once(std::string mtxfile) {
 
     std::cout << "Executing SPMV for file: " << mtxfile << std::endl;
 
@@ -210,8 +217,7 @@ void run_once(std::string mtxfile) {
     auto end_time = std::chrono::high_resolution_clock::now();
     auto ttime = end_time - start_time;
 
-    std::cout << "Elapsed time w/ custom OpenMP solution (ms): " << ttime/std::chrono::milliseconds(1) << std::endl;
-
+    //std::cout << "Elapsed time w/ custom OpenMP solution (ms): " << ttime/std::chrono::milliseconds(1) << std::endl;
     
     // Perform the Eigen3 test multiplication and check each value individually
     Eigen::VectorXd test_product = arr_e*vec_e;
@@ -223,12 +229,14 @@ void run_once(std::string mtxfile) {
     }
     std::cout << "Tests passed for file " << mtxfile << std::endl << std::endl;
 
-
     if (DEBUG) { // print the vector on debug
         std::cout << "\nResult:\n";
         for (int i = 0; i < result.size(); i++) {
             std::cout << result[i] << std::endl;
         }
     }
+
+    // Return elapsed time
+    return ttime/std::chrono::milliseconds(1);
 
 }
